@@ -1,0 +1,395 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Реестр заявок на работы{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+    .legend-item {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        margin-right: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    .event-card {
+        border-left: 4px solid #0d6efd;
+        margin-bottom: 15px;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .event-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    .event-card.status-draft { border-left-color: #6c757d; }
+    .event-card.status-under_review { border-left-color: #ffc107; }
+    .event-card.status-rejected { border-left-color: #dc3545; }
+    .event-card.status-approved { border-left-color: #198754; }
+    .event-card.status-in_progress { border-left-color: #0dcaf0; }
+    .event-card.status-completed { border-left-color: #0d6efd; }
+    .event-card.status-cancelled { border-left-color: #212529; }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    .service-disruption-badge {
+        background: #ffc107;
+        color: #000;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    .no-service-disruption-badge {
+        background: #198754;
+        color: #fff;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    .event-actions {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    .event-actions .btn {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+    }
+    .filter-btn-group .btn {
+        font-size: 0.85rem;
+    }
+    .filter-btn-group .btn.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Заголовок -->
+        <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+            <h1><i class="bi bi-list-ul"></i> Реестр заявок на работы</h1>
+            <div>
+                <a href="{% url 'events:event_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Создать заявку
+                </a>
+                <button class="btn btn-outline-secondary" onclick="window.print()">
+                    <i class="bi bi-printer"></i>
+                </button>
+                <button class="btn btn-outline-success" id="exportBtn">
+                    <i class="bi bi-file-earmark-excel"></i> Экспорт
+                </button>
+            </div>
+        </div>
+        
+        <!-- Блок фильтрации -->
+        <div class="filter-section">
+            <div class="row align-items-end">
+                <div class="col-md-3 mb-2">
+                    <label class="form-label fw-bold">Фильтр по дате</label>
+                    <div class="btn-group w-100 filter-btn-group" role="group">
+                        <a href="?filter=upcoming{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" 
+                           class="btn btn-outline-primary {% if current_filter == 'upcoming' %}active{% endif %}">
+                            Предстоящие
+                        </a>
+                        <a href="?filter=today{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" 
+                           class="btn btn-outline-primary {% if current_filter == 'today' %}active{% endif %}">
+                            Сегодня
+                        </a>
+                        <a href="?filter=past{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}" 
+                           class="btn btn-outline-primary {% if current_filter == 'past' %}active{% endif %}">
+                            Прошедшие
+                        </a>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label fw-bold">Период</label>
+                    <div class="d-flex gap-1">
+                        <input type="date" class="form-control form-control-sm" id="dateFrom" placeholder="С">
+                        <input type="date" class="form-control form-control-sm" id="dateTo" placeholder="По">
+                        <button class="btn btn-sm btn-primary" onclick="applyPeriodFilter()">
+                            <i class="bi bi-check"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-2 mb-2">
+                    <label class="form-label fw-bold">Статус</label>
+                    <select class="form-select form-select-sm" id="statusFilter" onchange="applyStatusFilter()">
+                        <option value="">Все статусы</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <label class="form-label fw-bold">Поиск</label>
+                    <form method="get" class="d-flex" id="searchForm">
+                        <input type="text" name="q" class="form-control form-control-sm me-1" 
+                               placeholder="Поиск..." value="{{ search_query }}">
+                        <input type="hidden" name="filter" value="{{ current_filter }}">
+                        <input type="hidden" name="status" id="searchStatus" value="{{ request.GET.status }}">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="bi bi-search"></i>
+                        </button>
+                        {% if search_query %}
+                            <a href="?filter={{ current_filter }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" 
+                               class="btn btn-sm btn-outline-secondary ms-1">
+                                <i class="bi bi-x"></i>
+                            </a>
+                        {% endif %}
+                    </form>
+                </div>
+                <div class="col-md-2 mb-2 text-end">
+                    <span class="badge bg-secondary">
+                        <i class="bi bi-file-text"></i> Всего: {{ paginator.count }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Легенда -->
+        <div class="mb-3">
+            <span class="legend-item" style="background: #ffc107; color: #000;">
+                <i class="bi bi-circle-fill"></i> с перерывом сервиса
+            </span>
+            <span class="legend-item" style="background: #198754; color: #fff;">
+                <i class="bi bi-circle-fill"></i> без перерыва сервиса
+            </span>
+            <span class="legend-item" style="background: #dc3545; color: #fff;">
+                <i class="bi bi-exclamation-triangle"></i> работы не закрыты
+            </span>
+            <span class="legend-item" style="background: #ff6b6b; color: #fff;">
+                <i class="bi bi-clock-history"></i> фактическая длительность > плановой
+            </span>
+            <span class="legend-item" style="background: #4dabf7; color: #fff;">
+                <i class="bi bi-clock"></i> суточная продолжительность
+            </span>
+        </div>
+        
+        <!-- Список заявок -->
+        {% for event in events %}
+            {% url 'events:event_detail' event.pk as detail_url %}
+            <div class="event-card card status-{{ event.status }}" onclick="window.location.href='{{ detail_url }}'">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-7">
+                            <!-- Заголовок и статус -->
+                            <div class="d-flex align-items-start gap-2 mb-2">
+                                <h5 class="card-title mb-0">
+                                    <a href="{% url 'events:event_detail' event.pk %}" class="text-decoration-none">
+                                        {{ event.work_name|default:"Без названия" }}
+                                    </a>
+                                </h5>
+                                <span class="badge status-badge bg-{% if event.status == 'draft' %}secondary{% elif event.status == 'under_review' %}warning{% elif event.status == 'rejected' %}danger{% elif event.status == 'approved' %}success{% elif event.status == 'in_progress' %}info{% elif event.status == 'completed' %}primary{% else %}dark{% endif %}">
+                                    {{ event.get_status_display }}
+                                </span>
+                            </div>
+                            
+                            <!-- Дата и время -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar-event"></i>
+                                        <strong>Плановые даты:</strong>
+                                    </small><br>
+                                    <small>
+                                        {{ event.planned_start|date:"d.m.Y H:i" }} - {{ event.planned_end|date:"d.m.Y H:i" }}
+                                    </small>
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i>
+                                        <strong>Плановая длительность:</strong>
+                                    </small><br>
+                                    <small class="duration-display">
+                                        {{ event.planned_duration_days }} дн. 
+                                        {{ event.planned_duration_hours }} ч. 
+                                        {{ event.planned_duration_minutes }} мин.
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Дополнительная информация -->
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    {% if event.is_service_disruption %}
+                                        <span class="service-disruption-badge">
+                                            <i class="bi bi-exclamation-circle"></i> Перерыв сервиса
+                                        </span>
+                                    {% else %}
+                                        <span class="no-service-disruption-badge">
+                                            <i class="bi bi-check-circle"></i> Без перерыва
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <small class="text-muted">
+                                        <i class="bi bi-person"></i>
+                                        {{ event.responsible_person|default:"Ответственный не назначен" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-5">
+                            <div class="row">
+                                <!-- Место нахождения -->
+                                <div class="col-md-7">
+                                    <small class="text-muted">
+                                        <i class="bi bi-geo-alt"></i> Место:
+                                    </small><br>
+                                    <small>
+                                        {% if event.object_location %}
+                                            {{ event.object_location.region }}, {{ event.object_location.site }}
+                                        {% elif event.is_object_outside and event.object_outside_location %}
+                                            {{ event.object_outside_location.name|truncatechars:30 }}
+                                        {% else %}
+                                            <span class="text-muted">не указано</span>
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                
+                                <!-- Кнопки действий -->
+                                <div class="col-md-5 text-end">
+                                    <div class="event-actions">
+                                        <a href="{% url 'events:event_detail' event.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if event.status == 'draft' or event.status == 'rejected' %}
+                                            <a href="{% url 'events:event_update' event.pk %}" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if event.status == 'draft' %}
+                                            <a href="{% url 'events:event_submit' event.pk %}" 
+                                               class="btn btn-sm btn-outline-warning"
+                                               onclick="return confirm('Отправить заявку на согласование?')">
+                                                <i class="bi bi-send"></i>
+                                            </a>
+                                        {% endif %}
+                                        {% if event.status == 'under_review' and perms.events.can_approve_event %}
+                                            <a href="{% url 'events:event_approve' event.pk %}" 
+                                               class="btn btn-sm btn-outline-success"
+                                               onclick="return confirm('Согласовать заявку?')">
+                                                <i class="bi bi-check-lg"></i>
+                                            </a>
+                                            <a href="{% url 'events:event_reject' event.pk %}" 
+                                               class="btn btn-sm btn-outline-danger"
+                                               onclick="return confirm('Отправить заявку на доработку?')">
+                                                <i class="bi bi-x-lg"></i>
+                                            </a>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted d-block mt-1">
+                                        {{ event.created_at|date:"d.m.Y H:i" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox" style="font-size: 4rem; color: #ddd;"></i>
+                <p class="text-muted mt-3">Нет заявок, соответствующих выбранным фильтрам</p>
+                <a href="{% url 'events:event_create' %}" class="btn btn-primary">
+                    <i class="bi bi-plus-circle"></i> Создать первую заявку
+                </a>
+            </div>
+        {% endfor %}
+        
+        <!-- Пагинация -->
+        {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if request.GET.filter %}&filter={{ request.GET.filter }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.filter %}&filter={{ request.GET.filter }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ page_obj.number }} / {{ paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.filter %}&filter={{ request.GET.filter }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ paginator.num_pages }}{% if request.GET.filter %}&filter={{ request.GET.filter }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Применение фильтра по статусу
+    function applyStatusFilter() {
+        const status = document.getElementById('statusFilter').value;
+        const url = new URL(window.location.href);
+        if (status) {
+            url.searchParams.set('status', status);
+        } else {
+            url.searchParams.delete('status');
+        }
+        // Сохраняем другие параметры
+        const filter = url.searchParams.get('filter') || 'upcoming';
+        const q = url.searchParams.get('q') || '';
+        window.location.href = '?' + new URLSearchParams({
+            filter: filter,
+            status: status,
+            q: q
+        }).toString();
+    }
+    
+    // Применение фильтра по периоду
+    function applyPeriodFilter() {
+        const dateFrom = document.getElementById('dateFrom').value;
+        const dateTo = document.getElementById('dateTo').value;
+        if (dateFrom && dateTo) {
+            window.location.href = '?filter=period&date_from=' + dateFrom + '&date_to=' + dateTo;
+        } else {
+            alert('Пожалуйста, выберите обе даты');
+        }
+    }
+    
+    // Автоматическое обновление формы поиска
+    document.getElementById('searchForm').addEventListener('submit', function(e) {
+        const status = document.getElementById('statusFilter').value;
+        document.getElementById('searchStatus').value = status;
+    });
+</script>
+{% endblock %}

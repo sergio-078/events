@@ -1,0 +1,36 @@
+{% extends 'events/emails/base_email.html' %}
+
+{% block content %}
+<h2>Заявка отправлена на доработку</h2>
+
+<p>Уважаемый сотрудник,</p>
+
+<p>Ваша заявка №{{ event.id }} была <strong style="color: #dc3545;">отправлена на доработку</strong>.</p>
+
+<div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <div class="detail-row">
+        <span class="detail-label">Заявка №:</span> {{ event.id }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Наименование работ:</span> {{ event.work_name }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Статус:</span>
+        <span class="status-badge status-rejected">Отправлена на доработку</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Причина доработки:</span>
+        <div style="background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 5px;">
+            {{ revision_reason }}
+        </div>
+    </div>
+</div>
+
+<p>
+    <a href="{{ event_url }}" class="button">Перейти к заявке и доработать</a>
+</p>
+
+<p>Пожалуйста, внесите необходимые изменения и отправьте заявку повторно.</p>
+
+<p>С уважением,<br>Система управления плановыми событиями</p>
+{% endblock %}

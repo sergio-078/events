@@ -1,0 +1,36 @@
+{% extends 'events/emails/base_email.html' %}
+
+{% block content %}
+<h2>Заявка согласована</h2>
+
+<p>Уважаемый сотрудник,</p>
+
+<p>Ваша заявка №{{ event.id }} была <strong>согласована</strong> руководителем.</p>
+
+<div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <div class="detail-row">
+        <span class="detail-label">Заявка №:</span> {{ event.id }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Наименование работ:</span> {{ event.work_name }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Статус:</span>
+        <span class="status-badge status-approved">Согласована</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Согласовал:</span> {{ approved_by }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Дата согласования:</span> {{ approved_at|date:"d.m.Y H:i" }}
+    </div>
+</div>
+
+<p>
+    <a href="{{ event_url }}" class="button">Перейти к заявке</a>
+</p>
+
+<p>Вы можете приступать к выполнению работ согласно плану.</p>
+
+<p>С уважением,<br>Система управления плановыми событиями</p>
+{% endblock %}

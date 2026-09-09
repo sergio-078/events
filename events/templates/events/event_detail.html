@@ -1,0 +1,517 @@
+{% extends 'base.html' %}
+
+{% block title %}Заявка №{{ event.id }} - {{ event.work_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-section {
+        background: white;
+        border-radius: 8px;
+        padding: 1.25rem;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .detail-section h6 {
+        color: #0d6efd;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    .detail-label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.9rem;
+    }
+    .detail-value {
+        color: #212529;
+        margin-bottom: 0.5rem;
+    }
+    .detail-value-empty {
+        color: #6c757d;
+        font-style: italic;
+    }
+    .status-badge-large {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    .tech-card-item {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        border-left: 3px solid #0d6efd;
+    }
+    .document-item {
+        display: inline-block;
+        margin: 0.25rem;
+        padding: 0.25rem 0.75rem;
+        background: #e9ecef;
+        border-radius: 4px;
+    }
+    .document-item a {
+        text-decoration: none;
+        color: #0d6efd;
+    }
+    .document-item a:hover {
+        text-decoration: underline;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        padding: 1rem 0;
+        border-top: 2px solid #e9ecef;
+        margin-top: 1rem;
+    }
+    .two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+    .timeline-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.25rem 0;
+        border-bottom: 1px solid #f1f3f5;
+    }
+    @media (max-width: 768px) {
+        .two-column {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <!-- Заголовок -->
+        <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap">
+            <div>
+                <h1 class="mb-2">
+                    Заявка №{{ event.id }}
+                    <span class="badge status-badge-large bg-{% if event.status == 'draft' %}secondary{% elif event.status == 'under_review' %}warning{% elif event.status == 'rejected' %}danger{% elif event.status == 'approved' %}success{% elif event.status == 'in_progress' %}info{% elif event.status == 'completed' %}primary{% else %}dark{% endif %}">
+                        {{ event.get_status_display }}
+                    </span>
+                </h1>
+                <h5 class="text-muted">{{ event.work_name }}</h5>
+            </div>
+            <div>
+                <a href="{% url 'events:event_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Вернуться к реестру
+                </a>
+                {% if event.status == 'draft' or event.status == 'rejected' %}
+                    <a href="{% url 'events:event_update' event.pk %}" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> Редактировать
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Информация о создании -->
+        <div class="alert alert-info">
+            <div class="row">
+                <div class="col-md-4">
+                    <i class="bi bi-person"></i> Создал: <strong>{{ event.created_by|default:"Неизвестно" }}</strong>
+                </div>
+                <div class="col-md-4">
+                    <i class="bi bi-calendar"></i> Создана: <strong>{{ event.created_at|date:"d.m.Y H:i" }}</strong>
+                </div>
+                <div class="col-md-4">
+                    <i class="bi bi-clock"></i> Последнее изменение: <strong>{{ event.updated_at|date:"d.m.Y H:i" }}</strong>
+                </div>
+            </div>
+            {% if event.submitted_at %}
+                <div class="row mt-1">
+                    <div class="col-md-6">
+                        <i class="bi bi-send"></i> Отправлена на согласование: <strong>{{ event.submitted_at|date:"d.m.Y H:i" }}</strong>
+                    </div>
+                    {% if event.approved_at %}
+                        <div class="col-md-6">
+                            <i class="bi bi-check-circle"></i> Согласована: <strong>{{ event.approved_at|date:"d.m.Y H:i" }}</strong>
+                            {% if event.approved_by %}
+                                <span class="text-muted">({{ event.approved_by }})</span>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Блок 1: Дата и время -->
+        <div class="detail-section">
+            <h6><i class="bi bi-calendar3"></i> Блок 1: Планируемые дата и время</h6>
+            <div class="two-column">
+                <div>
+                    <div class="detail-label">Планируемое начало работ</div>
+                    <div class="detail-value">{{ event.planned_start|date:"d.m.Y H:i" }}</div>
+                    
+                    <div class="detail-label">Планируемое окончание работ</div>
+                    <div class="detail-value">{{ event.planned_end|date:"d.m.Y H:i" }}</div>
+                </div>
+                <div>
+                    <div class="detail-label">Планируемая длительность работ</div>
+                    <div class="detail-value">
+                        <span class="badge bg-success" style="font-size: 1rem;">
+                            {{ event.planned_duration_days }} дн. 
+                            {{ event.planned_duration_hours }} ч. 
+                            {{ event.planned_duration_minutes }} мин.
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Блок 2: Причина работ -->
+        <div class="detail-section">
+            <h6><i class="bi bi-info-circle"></i> Блок 2: Причина работ</h6>
+            <div class="detail-value">
+                <span class="badge bg-secondary">{{ event.get_work_reason_display }}</span>
+            </div>
+        </div>
+        
+        <!-- Блок 3: Нарушение сервиса -->
+        <div class="detail-section">
+            <h6><i class="bi bi-exclamation-triangle"></i> Блок 3: Нарушение сервиса</h6>
+            <div class="two-column">
+                <div>
+                    <div class="detail-label">Нарушение сервиса</div>
+                    <div class="detail-value">
+                        {% if event.is_service_disruption %}
+                            <span class="badge bg-warning text-dark">Да</span>
+                        {% else %}
+                            <span class="badge bg-success">Нет</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if event.is_service_disruption %}
+                    <div>
+                        <div class="detail-label">Планируемая длительность перерыва</div>
+                        <div class="detail-value">
+                            {{ event.service_disruption_duration_days }} дн.
+                            {{ event.service_disruption_duration_hours }} ч.
+                            {{ event.service_disruption_duration_minutes }} мин.
+                        </div>
+                        <div class="detail-label">Длительность совпадает с работами</div>
+                        <div class="detail-value">
+                            {% if event.is_duration_match %}
+                                <span class="badge bg-success">Да</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Нет</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Блок 4: Затронутые сервисы -->
+        <div class="detail-section">
+            <h6><i class="bi bi-hdd-stack"></i> Блок 4: Затронутые сервисы</h6>
+            <div class="detail-value">
+                {% if event.affected_services.all %}
+                    {% for service in event.affected_services.all %}
+                        <span class="badge bg-info text-dark">{{ service.name }}</span>
+                    {% endfor %}
+                {% else %}
+                    <span class="detail-value-empty">Не указаны</span>
+                {% endif %}
+            </div>
+            {% if event.services_comment %}
+                <div class="detail-label mt-2">Комментарии</div>
+                <div class="detail-value">{{ event.services_comment }}</div>
+            {% endif %}
+        </div>
+        
+        <!-- Блок 5: Подробное описание работ -->
+        <div class="detail-section">
+            <h6><i class="bi bi-file-text"></i> Блок 5: Подробное описание работ</h6>
+            
+            <div class="two-column">
+                <div>
+                    <div class="detail-label">Тип объекта</div>
+                    <div class="detail-value">
+                        {% if event.device_types.all %}
+                            {% for dt in event.device_types.all %}
+                                <span class="badge bg-secondary">{{ dt.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указан</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="detail-label">Объект</div>
+                    <div class="detail-value">
+                        {% if event.devices.all %}
+                            {% for device in event.devices.all %}
+                                <span class="badge bg-secondary">{{ device.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указан</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="two-column">
+                <div>
+                    <div class="detail-label">Место нахождения объекта</div>
+                    <div class="detail-value">
+                        {% if event.is_object_outside %}
+                            <span class="badge bg-warning text-dark">За территорией Общества</span>
+                            {% if event.object_outside_location %}
+                                <div>{{ event.object_outside_location.name }}</div>
+                            {% endif %}
+                        {% elif event.object_location %}
+                            {{ event.object_location.full_address }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="detail-label">Место выполнения работ</div>
+                    <div class="detail-value">
+                        {% if event.is_work_outside %}
+                            <span class="badge bg-warning text-dark">За территорией Общества</span>
+                            {% if event.work_outside_location %}
+                                <div>{{ event.work_outside_location.name }}</div>
+                            {% endif %}
+                        {% elif event.work_location %}
+                            {{ event.work_location.full_address }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="detail-label">Наименование работ</div>
+            <div class="detail-value"><strong>{{ event.work_name }}</strong></div>
+            
+            <div class="detail-label mt-2">Подробное описание</div>
+            <div class="detail-value">{{ event.work_description|linebreaks }}</div>
+            
+            <!-- Технологическая карта -->
+            {% if event.tech_card_steps.all %}
+                <div class="detail-label mt-3">Технологическая карта</div>
+                {% for step in event.tech_card_steps.all %}
+                    <div class="tech-card-item">
+                        <strong>Шаг {{ step.step_number }}</strong>
+                        <span class="text-muted">
+                            {{ step.planned_start|date:"d.m.Y H:i" }} - {{ step.planned_end|date:"d.m.Y H:i" }}
+                        </span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Материалы -->
+            <div class="two-column mt-3">
+                <div>
+                    <div class="detail-label">Используемые материалы/инструменты</div>
+                    <div class="detail-value">
+                        {% if event.materials.all %}
+                            {% for material in event.materials.all %}
+                                <span class="badge bg-secondary">{{ material.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                    {% if event.materials_comment %}
+                        <div class="detail-value">{{ event.materials_comment }}</div>
+                    {% endif %}
+                </div>
+                <div>
+                    <div class="detail-label">Прилагаемые документы</div>
+                    <div class="detail-value">
+                        {% if event.documents.all %}
+                            {% for doc in event.documents.all %}
+                                <div class="document-item">
+                                    <a href="{{ doc.file.url }}" target="_blank">
+                                        <i class="bi bi-file-earmark"></i> {{ doc.file.name|slice:"15:" }}
+                                    </a>
+                                    {% if doc.description %}
+                                        <small class="text-muted">({{ doc.description }})</small>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Нет документов</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Блок 6: Исполнители работ -->
+        <div class="detail-section">
+            <h6><i class="bi bi-people"></i> Блок 6: Исполнители работ</h6>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="detail-label">Организации</div>
+                    <div class="detail-value">
+                        {% if event.organizations.all %}
+                            {% for org in event.organizations.all %}
+                                <span class="badge bg-secondary">{{ org.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="detail-label">Подразделения</div>
+                    <div class="detail-value">
+                        {% if event.departments.all %}
+                            {% for dept in event.departments.all %}
+                                <span class="badge bg-secondary">{{ dept.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="detail-label">Отделы/лаборатории/цехи</div>
+                    <div class="detail-value">
+                        {% if event.units.all %}
+                            {% for unit in event.units.all %}
+                                <span class="badge bg-secondary">{{ unit.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-md-4">
+                    <div class="detail-label">ФИО ответственного</div>
+                    <div class="detail-value">
+                        {% if event.responsible_person %}
+                            {{ event.responsible_person.full_name }}
+                            {% if event.responsible_person.position %}
+                                <span class="text-muted">({{ event.responsible_person.position }})</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указан</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="detail-label">ФИО исполнителей</div>
+                    <div class="detail-value">
+                        {% if event.executors.all %}
+                            {% for executor in event.executors.all %}
+                                <div>{{ executor.full_name }}</div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="detail-label">Совместные работы с</div>
+                    <div class="detail-value">
+                        {% if event.joint_workers.all %}
+                            {% for worker in event.joint_workers.all %}
+                                <div>{{ worker.full_name }}</div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Блок 7: Согласование и оповещение -->
+        <div class="detail-section">
+            <h6><i class="bi bi-check2-square"></i> Блок 7: Согласование и оповещение</h6>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="detail-label">С кем согласованы работы</div>
+                    <div class="detail-value">
+                        {% if event.agreed_with.all %}
+                            {% for person in event.agreed_with.all %}
+                                <div>{{ person.full_name }}</div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="detail-label">Кто был оповещён о работах</div>
+                    <div class="detail-value">
+                        {% if event.notified_persons.all %}
+                            {% for person in event.notified_persons.all %}
+                                <div>{{ person.full_name }}</div>
+                            {% endfor %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указаны</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Блок 8: Доработка заявки -->
+        {% if event.status == 'rejected' %}
+            <div class="detail-section border border-danger">
+                <h6 class="text-danger"><i class="bi bi-exclamation-octagon"></i> Блок 8: Доработка заявки</h6>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="detail-label">Причина отправки на доработку</div>
+                        <div class="detail-value">{{ event.revision_reason|default:"Не указана" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="detail-label">Комментарий после доработки</div>
+                        <div class="detail-value">{{ event.revision_comment|default:"Не указан" }}</div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Кнопки действий -->
+        <div class="detail-section">
+            <div class="action-buttons">
+                {% if event.status == 'draft' %}
+                    <a href="{% url 'events:event_submit' event.pk %}" class="btn btn-warning" onclick="return confirm('Отправить заявку на согласование?')">
+                        <i class="bi bi-send"></i> Отправить в ГДУ
+                    </a>
+                    <a href="{% url 'events:event_cancel' event.pk %}" class="btn btn-danger" onclick="return confirm('Отменить заявку?')">
+                        <i class="bi bi-x-circle"></i> Отменить заявку
+                    </a>
+                {% elif event.status == 'under_review' and perms.events.can_approve_event %}
+                    <a href="{% url 'events:event_approve' event.pk %}" class="btn btn-success" onclick="return confirm('Согласовать заявку?')">
+                        <i class="bi bi-check-lg"></i> Согласовать
+                    </a>
+                    <a href="{% url 'events:event_reject' event.pk %}" class="btn btn-danger" onclick="return confirm('Отправить заявку на доработку?')">
+                        <i class="bi bi-x-lg"></i> Отправить на доработку
+                    </a>
+                {% elif event.status == 'rejected' %}
+                    <a href="{% url 'events:event_update' event.pk %}" class="btn btn-primary">
+                        <i class="bi bi-pencil"></i> Доработать и отправить повторно
+                    </a>
+                {% elif event.status == 'approved' %}
+                    <button class="btn btn-success" onclick="alert('Заявка согласована. Можно приступать к выполнению работ.')">
+                        <i class="bi bi-play-circle"></i> Начать выполнение
+                    </button>
+                {% elif event.status == 'in_progress' %}
+                    <button class="btn btn-primary" onclick="alert('Работы завершены?')">
+                        <i class="bi bi-check-circle"></i> Завершить работы
+                    </button>
+                {% endif %}
+                
+                <a href="{% url 'events:event_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Вернуться к реестру
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

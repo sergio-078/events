@@ -1,0 +1,48 @@
+{% extends 'events/emails/base_email.html' %}
+
+{% block content %}
+<h2>Новая заявка на согласование</h2>
+
+<p>Уважаемый руководитель,</p>
+
+<p>Сотрудник <strong>{{ event.created_by.get_full_name|default:event.created_by.username }}</strong> создал новую заявку на работы и отправил её на согласование.</p>
+
+<div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    <div class="detail-row">
+        <span class="detail-label">Заявка №:</span> {{ event.id }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Наименование работ:</span> {{ event.work_name }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Статус:</span>
+        <span class="status-badge status-under_review">На согласовании</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Планируемое начало:</span> {{ event.planned_start|date:"d.m.Y H:i" }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Планируемое окончание:</span> {{ event.planned_end|date:"d.m.Y H:i" }}
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Причина работ:</span> {{ event.get_work_reason_display }}
+    </div>
+    {% if event.is_service_disruption %}
+        <div class="detail-row">
+            <span class="detail-label">Нарушение сервиса:</span> <strong style="color: #dc3545;">Да</strong>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Длительность перерыва:</span> 
+            {{ event.service_disruption_duration_days }} дн. 
+            {{ event.service_disruption_duration_hours }} ч. 
+            {{ event.service_disruption_duration_minutes }} мин.
+        </div>
+    {% endif %}
+</div>
+
+<p>
+    <a href="{{ action_url }}" class="button">Перейти к заявке</a>
+</p>
+
+<p>С уважением,<br>Система управления плановыми событиями</p>
+{% endblock %}
