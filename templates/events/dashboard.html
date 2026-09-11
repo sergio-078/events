@@ -1,0 +1,481 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Дашборд - Статистика{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stat-card .stat-icon {
+        font-size: 2rem;
+        color: #0d6efd;
+    }
+    .stat-card .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #212529;
+    }
+    .stat-card .stat-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    .stat-card .stat-change {
+        font-size: 0.85rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+    }
+    .stat-card .stat-change.positive {
+        background: #d4edda;
+        color: #155724;
+    }
+    .stat-card .stat-change.negative {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+    .chart-container h5 {
+        color: #495057;
+        border-bottom: 2px solid #e9ecef;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .chart-wrapper {
+        position: relative;
+        height: 300px;
+        width: 100%;
+    }
+    .color-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 5px;
+    }
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-speedometer2"></i> Дашборд</h1>
+            <div>
+                <button class="btn btn-outline-primary" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Обновить
+                </button>
+                <button class="btn btn-outline-secondary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Печать
+                </button>
+            </div>
+        </div>
+        
+        <!-- Карточки статистики -->
+        <div class="row mb-4">
+            <!-- Всего заявок -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Всего заявок</div>
+                            <div class="stat-number">{{ stats.performance.total_events }}</div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="bi bi-file-text"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Сегодня -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Заявок на сегодня</div>
+                            <div class="stat-number">{{ stats.today.total }}</div>
+                            <div>
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-circle"></i> 
+                                    {{ stats.today.with_disruption }} с перерывом
+                                </span>
+                            </div>
+                        </div>
+                        <div class="stat-icon">
+                            <i class="bi bi-calendar-day"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Выполняется -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Выполняется</div>
+                            <div class="stat-number">{{ stats.today.in_progress }}</div>
+                        </div>
+                        <div class="stat-icon" style="color: #0dcaf0;">
+                            <i class="bi bi-play-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Завершено -->
+            <div class="col-md-3 col-sm-6 mb-3">
+                <div class="stat-card">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="stat-label">Завершено сегодня</div>
+                            <div class="stat-number">{{ stats.today.completed }}</div>
+                            <div>
+                                <span class="stat-change positive">
+                                    <i class="bi bi-check-circle"></i>
+                                    {{ stats.performance.success_rate }}% успешных
+                                </span>
+                            </div>
+                        </div>
+                        <div class="stat-icon" style="color: #198754;">
+                            <i class="bi bi-check-circle"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Графики -->
+        <div class="row">
+            <!-- Статусы (круговая диаграмма) -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="bi bi-pie-chart"></i> Распределение по статусам</h5>
+                    <div class="chart-wrapper">
+                        <canvas id="statusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Причины работ (круговая диаграмма) -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="bi bi-info-circle"></i> Причины работ</h5>
+                    <div class="chart-wrapper">
+                        <canvas id="reasonChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Динамика по месяцам -->
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h5><i class="bi bi-bar-chart"></i> Динамика заявок по месяцам</h5>
+                    <div class="chart-wrapper" style="height: 350px;">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Затронутые сервисы -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="bi bi-hdd-stack"></i> Затронутые сервисы (Топ-10)</h5>
+                    <div class="chart-wrapper">
+                        <canvas id="servicesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Длительность работ -->
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <h5><i class="bi bi-clock"></i> Длительность работ</h5>
+                    <div class="chart-wrapper">
+                        <canvas id="durationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Загрузка по дням недели -->
+            <div class="col-md-12">
+                <div class="chart-container">
+                    <h5><i class="bi bi-calendar-week"></i> Загрузка по дням недели</h5>
+                    <div class="chart-wrapper" style="height: 250px;">
+                        <canvas id="weekChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Получаем данные из контекста
+    const stats = {{ stats_json|safe }};
+    
+    // Функция для создания цветов
+    function getColors(count) {
+        const colors = [
+            '#0d6efd', '#6c757d', '#ffc107', '#dc3545', '#198754',
+            '#0dcaf0', '#6610f2', '#d63384', '#fd7e14', '#20c997'
+        ];
+        const result = [];
+        for (let i = 0; i < count; i++) {
+            result.push(colors[i % colors.length]);
+        }
+        return result;
+    }
+    
+    // 1. Диаграмма статусов
+    if (document.getElementById('statusChart')) {
+        const ctx = document.getElementById('statusChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: stats.status.labels,
+                datasets: [{
+                    data: stats.status.values,
+                    backgroundColor: stats.status.colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 2. Причины работ
+    if (document.getElementById('reasonChart')) {
+        const ctx = document.getElementById('reasonChart').getContext('2d');
+        const colors = getColors(stats.work_reason.labels.length);
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: stats.work_reason.labels,
+                datasets: [{
+                    data: stats.work_reason.values,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 3. Динамика по месяцам
+    if (document.getElementById('monthlyChart')) {
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: stats.monthly.months,
+                datasets: [
+                    {
+                        label: 'Создано',
+                        data: stats.monthly.created,
+                        backgroundColor: 'rgba(13, 110, 253, 0.6)',
+                        borderColor: '#0d6efd',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Согласовано',
+                        data: stats.monthly.approved,
+                        backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                        borderColor: '#198754',
+                        borderWidth: 2
+                    },
+                    {
+                        label: 'Завершено',
+                        data: stats.monthly.completed,
+                        backgroundColor: 'rgba(108, 117, 125, 0.6)',
+                        borderColor: '#6c757d',
+                        borderWidth: 2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+    
+    // 4. Затронутые сервисы
+    if (document.getElementById('servicesChart')) {
+        const ctx = document.getElementById('servicesChart').getContext('2d');
+        const colors = getColors(stats.services.labels.length);
+        new Chart(ctx, {
+            type: 'horizontalBar',
+            data: {
+                labels: stats.services.labels,
+                datasets: [{
+                    data: stats.services.values,
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => c),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 5. Длительность работ
+    if (document.getElementById('durationChart')) {
+        const ctx = document.getElementById('durationChart').getContext('2d');
+        const colors = getColors(stats.work_duration.labels.length);
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: stats.work_duration.labels,
+                datasets: [{
+                    data: stats.work_duration.values,
+                    backgroundColor: colors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            usePointStyle: true
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // 6. Загрузка по дням недели
+    if (document.getElementById('weekChart')) {
+        const ctx = document.getElementById('weekChart').getContext('2d');
+        const weekData = stats.week.by_day;
+        const labels = Object.keys(weekData);
+        const values = Object.values(weekData);
+        const colors = getColors(values.length);
+        
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors.map(c => c + '80'),
+                    borderColor: colors,
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

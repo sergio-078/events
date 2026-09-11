@@ -173,6 +173,12 @@
                     </div>
                 </div>
             </div>
+
+            {% if form.service_disruption_duration_days.errors %}
+    <div class="alert alert-danger">
+        {{ form.service_disruption_duration_days.errors }}
+    </div>
+{% endif %}
             
             <!-- Блок 4: Затронутые сервисы -->
             <div class="form-section">
@@ -244,7 +250,7 @@
                     </div>
                 </div>
                 
-                <div id="techCardSection">
+                <div id="techCardSection" {% if not form.instance.is_tech_card_required %}style="display: none;"{% endif %}>
                     <h6 class="mt-3">Технологическая карта</h6>
                     {{ tech_card_formset.management_form }}
                     <div id="techCardSteps">
@@ -252,16 +258,16 @@
                             <div class="tech-card-step">
                                 <div class="step-number">Шаг {{ forloop.counter }}</div>
                                 <div class="row">
-                                    <div class="col-md-3">
-                                        {{ form.step_number|as_crispy_field }}
-                                    </div>
                                     <div class="col-md-4">
+                                        {{ form.name|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-3">
                                         {{ form.planned_start|as_crispy_field }}
                                     </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-3">
                                         {{ form.planned_end|as_crispy_field }}
                                     </div>
-                                    <div class="col-md-1">
+                                    <div class="col-md-2">
                                         {% if tech_card_formset.can_delete %}
                                             {{ form.DELETE|as_crispy_field }}
                                         {% endif %}
@@ -486,6 +492,30 @@
             }
         }
     }
+
+        // ===== 4.1. Управление технологической картой =====
+    function toggleTechCardFields() {
+        const checkbox = document.getElementById('id_is_tech_card_required');
+        const section = document.getElementById('techCardSection');
+        if (!checkbox || !section) return;
+
+        if (checkbox.checked) {
+            section.style.display = 'block';
+            section.querySelectorAll('input, select, textarea').forEach(el => {
+                // Скрытые поля (management_form, csrf) не трогаем — иначе Django не соберёт formset
+                if (el.type !== 'hidden' && el.name !== 'csrfmiddlewaretoken') {
+                    el.disabled = false;
+                }
+            });
+        } else {
+            section.style.display = 'none';
+            section.querySelectorAll('input, select, textarea').forEach(el => {
+                if (el.type !== 'hidden' && el.name !== 'csrfmiddlewaretoken') {
+                    el.disabled = true;
+                }
+            });
+        }
+    }
     
     // ===== 5. Управление технологической картой =====
     function updateTechCardFormset() {
@@ -542,35 +572,36 @@
                     // Создаем новый шаг из шаблона
                     const template = document.createElement('div');
                     template.className = 'tech-card-step';
-                    template.innerHTML = `
-                        <div class="step-number">Шаг 1</div>
-                        <div class="row">
-                            <div class="col-md-3">
-                                <div class="form-group">
-                                    <label class="form-label">Номер шага</label>
-                                    <input type="number" name="tech_card-0-step_number" class="form-control" min="1" max="50">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="form-label">Планируемые дата и время начала</label>
-                                    <input type="datetime-local" name="tech_card-0-planned_start" class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label class="form-label">Планируемые дата и время окончания</label>
-                                    <input type="datetime-local" name="tech_card-0-planned_end" class="form-control">
-                                </div>
-                            </div>
-                            <div class="col-md-1">
-                                <div class="form-group">
-                                    <label class="form-label">Удалить</label>
-                                    <input type="checkbox" name="tech_card-0-DELETE" class="form-check-input">
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                        template.innerHTML = `
+        <div class="step-number">Шаг 1</div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="form-group">
+                    <label class="form-label">Содержание шага</label>
+                    <input type="text" name="tech_card-0-name" class="form-control" placeholder="Например: Проверить порт на АТС">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="form-label">Планируемые дата и время начала</label>
+                    <input type="datetime-local" name="tech_card-0-planned_start" class="form-control">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="form-group">
+                    <label class="form-label">Планируемые дата и время окончания</label>
+                    <input type="datetime-local" name="tech_card-0-planned_end" class="form-control">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-group">
+                    <label class="form-label">Удалить</label>
+                    <input type="checkbox" name="tech_card-0-DELETE" class="form-check-input">
+                </div>
+            </div>
+        </div>
+    `;
+                    
                     newStep = template;
                 }
                 
@@ -583,6 +614,7 @@
         toggleServiceDisruptionFields();
         toggleObjectOutsideFields();
         toggleWorkOutsideFields();
+        toggleTechCardFields();
         calculateDuration();
         
         // Привязка событий
@@ -606,6 +638,11 @@
         const workOutsideCheckbox = document.getElementById('id_is_work_outside');
         if (workOutsideCheckbox) {
             workOutsideCheckbox.addEventListener('change', toggleWorkOutsideFields);
+        }
+
+        const techCardCheckbox = document.getElementById('id_is_tech_card_required');
+        if (techCardCheckbox) {
+            techCardCheckbox.addEventListener('change', toggleTechCardFields);
         }
     });
 </script>

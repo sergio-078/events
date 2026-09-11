@@ -1,11 +1,27 @@
 # Register your models here.
 from django.contrib import admin
+from django.contrib.auth.models import Group, Permission
+from django.contrib.contenttypes.models import ContentType
 from django.utils.html import format_html
 from .models import (
     Service, DeviceType, Device, Location, OutsideLocation, Material,
     Organization, Department, Unit, Employee,
     Event, TechCardStep, EventDocument
 )
+
+
+class GroupAdmin(admin.ModelAdmin):
+    list_display = ['name', 'get_permissions_count']
+    filter_horizontal = ['permissions']
+    
+    def get_permissions_count(self, obj):
+        return obj.permissions.count()
+    get_permissions_count.short_description = 'Количество прав'
+
+
+# Переопределяем стандартную регистрацию групп
+admin.site.unregister(Group)
+admin.site.register(Group, GroupAdmin)
 
 
 @admin.register(Service)
@@ -81,7 +97,7 @@ class EmployeeAdmin(admin.ModelAdmin):
 class TechCardStepInline(admin.TabularInline):
     model = TechCardStep
     extra = 0
-    fields = ['step_number', 'planned_start', 'planned_end']
+    fields = ['step_number', 'name', 'planned_start', 'planned_end']
     ordering = ['step_number']
 
 
@@ -173,3 +189,8 @@ class EventAdmin(admin.ModelAdmin):
             status_names.get(obj.status, obj.status)
         )
     status_badge.short_description = 'Статус'
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Создание новой записи
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

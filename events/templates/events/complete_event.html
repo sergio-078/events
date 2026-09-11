@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Завершение работ - Заявка №{{ event.id }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-check-circle"></i> Завершение работ</h4>
+                <p class="text-muted mb-0">Заявка №{{ event.id }} - {{ event.work_name }}</p>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        Заполните фактические данные о выполнении работ.
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Фактическая дата и время начала работ</label>
+                                <input type="datetime-local" name="actual_start" class="form-control">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Фактическая дата и время окончания работ</label>
+                                <input type="datetime-local" name="actual_end" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if event.is_service_disruption %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Фактическая дата и время начала перерыва</label>
+                                    <input type="datetime-local" name="actual_disruption_start" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Фактическая дата и время окончания перерыва</label>
+                                    <input type="datetime-local" name="actual_disruption_end" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Что было сделано</label>
+                        <textarea name="work_done" class="form-control" rows="4" placeholder="Опишите выполненные работы..."></textarea>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Комментарии</label>
+                        <textarea name="comments" class="form-control" rows="3" placeholder="Дополнительные комментарии..."></textarea>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'events:event_detail' event.pk %}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Отмена
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Завершить работы
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Информация о плановых данных -->
+        <div class="card mt-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Плановые данные</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Плановое начало:</strong> {{ event.planned_start|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Плановое окончание:</strong> {{ event.planned_end|date:"d.m.Y H:i" }}</p>
+                        <p><strong>Плановая длительность:</strong> 
+                            {{ event.planned_duration_days }} дн. 
+                            {{ event.planned_duration_hours }} ч. 
+                            {{ event.planned_duration_minutes }} мин.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        {% if event.is_service_disruption %}
+                            <p><strong>Нарушение сервиса:</strong> Да</p>
+                            <p><strong>Плановый перерыв:</strong> 
+                                {{ event.service_disruption_duration_days }} дн. 
+                                {{ event.service_disruption_duration_hours }} ч. 
+                                {{ event.service_disruption_duration_minutes }} мин.
+                            </p>
+                        {% else %}
+                            <p><strong>Нарушение сервиса:</strong> Нет</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

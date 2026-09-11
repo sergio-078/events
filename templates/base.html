@@ -157,6 +157,50 @@
                 </div>
             </div>
         </nav>
+
+        <!-- Меню навигации -->
+<ul class="navbar-nav me-auto">
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'events:event_list' %}">
+            <i class="bi bi-list-ul"></i> Реестр заявок
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'events:event_create' %}">
+            <i class="bi bi-plus-circle"></i> Создать заявку
+        </a>
+    </li>
+    {% if perms.events.can_edit_dictionaries or user.is_superuser %}
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="dictDropdown" role="button" data-bs-toggle="dropdown">
+                <i class="bi bi-book"></i> Справочники
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'events:service_list' %}">Сервисы</a></li>
+                <li><a class="dropdown-item" href="{% url 'events:device_type_list' %}">Типы объектов</a></li>
+                <li><a class="dropdown-item" href="{% url 'events:device_list' %}">Объекты</a></li>
+                <li><a class="dropdown-item" href="{% url 'events:location_list' %}">Местоположения</a></li>
+                <li><a class="dropdown-item" href="{% url 'events:employee_list' %}">Сотрудники</a></li>
+                <li><a class="dropdown-item" href="{% url 'events:organization_list' %}">Организации</a></li>
+            </ul>
+        </li>
+    {% endif %}
+</ul>
+
+{% if perms.events.can_manage_users or user.is_superuser %}
+    <li class="nav-item">
+        <a class="nav-link" href="{% url 'events:audit_list' %}">
+            <i class="bi bi-clipboard-data"></i> Аудит
+        </a>
+    </li>
+{% endif %}
+
+<!-- В меню навигации -->
+<li class="nav-item">
+    <a class="nav-link" href="{% url 'events:dashboard' %}">
+        <i class="bi bi-speedometer2"></i> Дашборд
+    </a>
+</li>
         
         <!-- Сообщения -->
         {% if messages %}

@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+
+{% block title %}Аудит действий пользователей{% endblock %}
+
+{% block extra_css %}
+<style>
+    .audit-entry {
+        border-left: 3px solid #0d6efd;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        background: white;
+        border-radius: 4px;
+        transition: background 0.2s;
+    }
+    .audit-entry:hover {
+        background: #f8f9fa;
+    }
+    .audit-entry .action-icon {
+        font-size: 1.2rem;
+        margin-right: 0.5rem;
+    }
+    .audit-entry .action-create { border-left-color: #198754; }
+    .audit-entry .action-update { border-left-color: #0d6efd; }
+    .audit-entry .action-delete { border-left-color: #dc3545; }
+    .audit-entry .action-submit { border-left-color: #ffc107; }
+    .audit-entry .action-approve { border-left-color: #20c997; }
+    .audit-entry .action-reject { border-left-color: #fd7e14; }
+    .audit-entry .action-complete { border-left-color: #0dcaf0; }
+    .audit-entry .action-cancel { border-left-color: #6c757d; }
+    .audit-entry .action-view { border-left-color: #6610f2; }
+    .audit-entry .action-login { border-left-color: #d63384; }
+    .audit-entry .action-logout { border-left-color: #adb5bd; }
+    
+    .filter-section {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+    .changes-view {
+        background: #f8f9fa;
+        padding: 0.75rem;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1><i class="bi bi-clipboard-data"></i> Аудит действий</h1>
+            <div>
+                <button class="btn btn-outline-secondary" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise"></i> Обновить
+                </button>
+            </div>
+        </div>
+        
+        <!-- Фильтры -->
+        <div class="filter-section">
+            <form method="get" class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label">Пользователь</label>
+                    <input type="text" name="user" class="form-control form-control-sm" 
+                           placeholder="Поиск по пользователю" value="{{ request.GET.user|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Действие</label>
+                    <select name="action_type" class="form-select form-select-sm">
+                        <option value="">Все действия</option>
+                        {% for value, label in action_types %}
+                            <option value="{{ value }}" {% if request.GET.action_type == value %}selected{% endif %}>
+                                {{ label }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Модель</label>
+                    <input type="text" name="model_name" class="form-control form-control-sm" 
+                           placeholder="Модель" value="{{ request.GET.model_name|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">С</label>
+                    <input type="date" name="date_from" class="form-control form-control-sm" 
+                           value="{{ request.GET.date_from|default:'' }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">По</label>
+                    <input type="date" name="date_to" class="form-control form-control-sm" 
+                           value="{{ request.GET.date_to|default:'' }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">
+                        <i class="bi bi-search"></i> Применить
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Список записей аудита -->
+        <div class="list-group">
+            {% for log in logs %}
+                <div class="audit-entry action-{{ log.action_type }}">
+                    <div class="row align-items-center">
+                        <div class="col-md-1 text-center">
+                            <span class="action-icon">
+                                {% if log.action_type == 'create' %}
+                                    <i class="bi bi-plus-circle-fill text-success"></i>
+                                {% elif log.action_type == 'update' %}
+                                    <i class="bi bi-pencil-square text-primary"></i>
+                                {% elif log.action_type == 'delete' %}
+                                    <i class="bi bi-trash-fill text-danger"></i>
+                                {% elif log.action_type == 'view' %}
+                                    <i class="bi bi-eye text-info"></i>
+                                {% elif log.action_type == 'submit' %}
+                                    <i class="bi bi-send text-warning"></i>
+                                {% elif log.action_type == 'approve' %}
+                                    <i class="bi bi-check-circle-fill text-success"></i>
+                                {% elif log.action_type == 'reject' %}
+                                    <i class="bi bi-x-circle-fill text-danger"></i>
+                                {% elif log.action_type == 'complete' %}
+                                    <i class="bi bi-check2-circle text-info"></i>
+                                {% elif log.action_type == 'cancel' %}
+                                    <i class="bi bi-x-octagon text-secondary"></i>
+                                {% elif log.action_type == 'login' %}
+                                    <i class="bi bi-box-arrow-in-right text-primary"></i>
+                                {% elif log.action_type == 'logout' %}
+                                    <i class="bi bi-box-arrow-right text-secondary"></i>
+                                {% else %}
+                                    <i class="bi bi-record-circle"></i>
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="col-md-2">
+                            <strong>{{ log.username }}</strong>
+                            {% if log.user_ip %}
+                                <br><small class="text-muted">{{ log.user_ip }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <span class="badge bg-secondary">{{ log.get_action_type_display }}</span>
+                            {% if log.model_name %}
+                                <br><small class="text-muted">{{ log.model_name }}</small>
+                            {% endif %}
+                            {% if log.object_repr %}
+                                <br><small>{{ log.object_repr|truncatechars:50 }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-truncate" style="max-width: 200px;">
+                                {{ log.message|default:'' }}
+                            </div>
+                            {% if log.changes %}
+                                <a href="#" data-bs-toggle="collapse" data-bs-target="#changes-{{ log.id }}" 
+                                   class="text-muted small">
+                                    <i class="bi bi-eye"></i> Показать изменения
+                                </a>
+                                <div class="collapse changes-view" id="changes-{{ log.id }}">
+                                    <pre>{{ log.changes|pprint }}</pre>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-2 text-end">
+                            <small class="text-muted">
+                                {{ log.created_at|date:"d.m.Y H:i:s" }}
+                            </small>
+                        </div>
+                        <div class="col-md-1 text-end">
+                            {% if log.request_path %}
+                                <small class="text-muted">{{ log.request_path|truncatechars:20 }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="text-center py-5">
+                    <i class="bi bi-inbox" style="font-size: 3rem; color: #ccc;"></i>
+                    <p class="text-muted mt-3">Нет записей аудита</p>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Пагинация -->
+        {% if is_paginated %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            {{ page_obj.number }} / {{ paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -108,7 +108,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- Информация о создании -->
         <div class="alert alert-info">
             <div class="row">
@@ -138,7 +138,7 @@
                 </div>
             {% endif %}
         </div>
-        
+
         <!-- Блок 1: Дата и время -->
         <div class="detail-section">
             <h6><i class="bi bi-calendar3"></i> Блок 1: Планируемые дата и время</h6>
@@ -146,7 +146,7 @@
                 <div>
                     <div class="detail-label">Планируемое начало работ</div>
                     <div class="detail-value">{{ event.planned_start|date:"d.m.Y H:i" }}</div>
-                    
+
                     <div class="detail-label">Планируемое окончание работ</div>
                     <div class="detail-value">{{ event.planned_end|date:"d.m.Y H:i" }}</div>
                 </div>
@@ -154,15 +154,126 @@
                     <div class="detail-label">Планируемая длительность работ</div>
                     <div class="detail-value">
                         <span class="badge bg-success" style="font-size: 1rem;">
-                            {{ event.planned_duration_days }} дн. 
-                            {{ event.planned_duration_hours }} ч. 
+                            {{ event.planned_duration_days }} дн.
+                            {{ event.planned_duration_hours }} ч.
                             {{ event.planned_duration_minutes }} мин.
                         </span>
                     </div>
                 </div>
             </div>
         </div>
-        
+
+        <!-- Блок с фактическими данными -->
+        {% if event.status == 'completed' or event.is_completed %}
+        <div class="detail-section border border-success">
+            <h6 class="text-success"><i class="bi bi-check-circle-fill"></i> Фактические данные выполнения работ</h6>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="detail-label">Фактическое начало работ</div>
+                    <div class="detail-value">
+                        {% if event.actual_start %}
+                            {{ event.actual_start|date:"d.m.Y H:i" }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-label">Фактическое окончание работ</div>
+                    <div class="detail-value">
+                        {% if event.actual_end %}
+                            {{ event.actual_end|date:"d.m.Y H:i" }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-label">Фактическая длительность работ</div>
+                    <div class="detail-value">
+                        {% if event.actual_start and event.actual_end %}
+                            <span class="badge bg-info">
+                                {{ event.actual_duration_days }} дн.
+                                {{ event.actual_duration_hours }} ч.
+                                {{ event.actual_duration_minutes }} мин.
+                            </span>
+                            {% if event.actual_duration_days > event.planned_duration_days or event.actual_duration_hours > event.planned_duration_hours or event.actual_duration_minutes > event.planned_duration_minutes %}
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-exclamation-triangle"></i> Превышение плана
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="detail-label">Фактическое начало перерыва</div>
+                    <div class="detail-value">
+                        {% if event.actual_disruption_start %}
+                            {{ event.actual_disruption_start|date:"d.m.Y H:i" }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-label">Фактическое окончание перерыва</div>
+                    <div class="detail-value">
+                        {% if event.actual_disruption_end %}
+                            {{ event.actual_disruption_end|date:"d.m.Y H:i" }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-label">Фактическая длительность перерыва</div>
+                    <div class="detail-value">
+                        {% if event.actual_disruption_start and event.actual_disruption_end %}
+                            <span class="badge bg-warning text-dark">
+                                {{ event.actual_disruption_duration_days }} дн.
+                                {{ event.actual_disruption_duration_hours }} ч.
+                                {{ event.actual_disruption_duration_minutes }} мин.
+                            </span>
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="detail-label">Что было сделано</div>
+                    <div class="detail-value">
+                        {% if event.work_done %}
+                            {{ event.work_done|linebreaks }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указано</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-label mt-2">Комментарии</div>
+                    <div class="detail-value">
+                        {% if event.comments %}
+                            {{ event.comments|linebreaks }}
+                        {% else %}
+                            <span class="detail-value-empty">Нет комментариев</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="detail-label mt-2">Дата завершения</div>
+                    <div class="detail-value">
+                        {% if event.completed_at %}
+                            {{ event.completed_at|date:"d.m.Y H:i" }}
+                        {% else %}
+                            <span class="detail-value-empty">Не указана</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Блок 2: Причина работ -->
         <div class="detail-section">
             <h6><i class="bi bi-info-circle"></i> Блок 2: Причина работ</h6>
@@ -170,7 +281,7 @@
                 <span class="badge bg-secondary">{{ event.get_work_reason_display }}</span>
             </div>
         </div>
-        
+
         <!-- Блок 3: Нарушение сервиса -->
         <div class="detail-section">
             <h6><i class="bi bi-exclamation-triangle"></i> Блок 3: Нарушение сервиса</h6>
@@ -205,7 +316,7 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- Блок 4: Затронутые сервисы -->
         <div class="detail-section">
             <h6><i class="bi bi-hdd-stack"></i> Блок 4: Затронутые сервисы</h6>
@@ -223,11 +334,11 @@
                 <div class="detail-value">{{ event.services_comment }}</div>
             {% endif %}
         </div>
-        
+
         <!-- Блок 5: Подробное описание работ -->
         <div class="detail-section">
             <h6><i class="bi bi-file-text"></i> Блок 5: Подробное описание работ</h6>
-            
+
             <div class="two-column">
                 <div>
                     <div class="detail-label">Тип объекта</div>
@@ -254,7 +365,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="two-column">
                 <div>
                     <div class="detail-label">Место нахождения объекта</div>
@@ -287,26 +398,26 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="detail-label">Наименование работ</div>
             <div class="detail-value"><strong>{{ event.work_name }}</strong></div>
-            
+
             <div class="detail-label mt-2">Подробное описание</div>
             <div class="detail-value">{{ event.work_description|linebreaks }}</div>
-            
+
             <!-- Технологическая карта -->
             {% if event.tech_card_steps.all %}
-                <div class="detail-label mt-3">Технологическая карта</div>
-                {% for step in event.tech_card_steps.all %}
-                    <div class="tech-card-item">
-                        <strong>Шаг {{ step.step_number }}</strong>
-                        <span class="text-muted">
-                            {{ step.planned_start|date:"d.m.Y H:i" }} - {{ step.planned_end|date:"d.m.Y H:i" }}
-                        </span>
-                    </div>
-                {% endfor %}
-            {% endif %}
-            
+    <div class="detail-label mt-3">Технологическая карта</div>
+    {% for step in event.tech_card_steps.all %}
+        <div class="tech-card-item">
+            <strong>Шаг {{ step.step_number }}{% if step.name %}: {{ step.name }}{% endif %}</strong>
+            <span class="text-muted">
+                {{ step.planned_start|date:"d.m.Y H:i" }} - {{ step.planned_end|date:"d.m.Y H:i" }}
+            </span>
+        </div>
+    {% endfor %}
+{% endif %}
+
             <!-- Материалы -->
             <div class="two-column mt-3">
                 <div>
@@ -345,7 +456,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Блок 6: Исполнители работ -->
         <div class="detail-section">
             <h6><i class="bi bi-people"></i> Блок 6: Исполнители работ</h6>
@@ -427,7 +538,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Блок 7: Согласование и оповещение -->
         <div class="detail-section">
             <h6><i class="bi bi-check2-square"></i> Блок 7: Согласование и оповещение</h6>
@@ -458,7 +569,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Блок 8: Доработка заявки -->
         {% if event.status == 'rejected' %}
             <div class="detail-section border border-danger">
@@ -475,7 +586,7 @@
                 </div>
             </div>
         {% endif %}
-        
+
         <!-- Кнопки действий -->
         <div class="detail-section">
             <div class="action-buttons">
@@ -506,7 +617,7 @@
                         <i class="bi bi-check-circle"></i> Завершить работы
                     </button>
                 {% endif %}
-                
+
                 <a href="{% url 'events:event_list' %}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> Вернуться к реестру
                 </a>
