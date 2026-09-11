@@ -290,27 +290,19 @@ class EventForm(forms.ModelForm):
 class TechCardStepForm(forms.ModelForm):
     class Meta:
         model = TechCardStep
-        fields = ['step_number', 'name', 'planned_start', 'planned_end']
+        fields = ['name', 'planned_start', 'planned_end']  # step_number убрали
         widgets = {
-            'step_number': forms.HiddenInput(),
-            'name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Например: Проверить порт на АТС'
-            }),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Например: Проверить порт на АТС'}),
             'planned_start': DateTimeLocalInput(),
             'planned_end': DateTimeLocalInput(),
         }
 
     def clean(self):
         cleaned_data = super().clean()
-        planned_start = cleaned_data.get('planned_start')
-        planned_end = cleaned_data.get('planned_end')
-
-        if planned_start and planned_end and planned_end <= planned_start:
-            raise forms.ValidationError(
-                'Дата окончания шага не может быть раньше даты начала шага'
-            )
-
+        ps = cleaned_data.get('planned_start')
+        pe = cleaned_data.get('planned_end')
+        if ps and pe and pe <= ps:
+            raise forms.ValidationError('Дата окончания шага не может быть раньше даты начала шага')
         return cleaned_data
 
 

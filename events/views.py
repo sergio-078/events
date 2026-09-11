@@ -152,7 +152,7 @@ class EventCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
             context['tech_card_formset'] = TechCardStepFormSet(
-                self.request.POST, instance=self.object
+                self.request.POST, instance=self.object, prefix='tech_card'
             )
         else:
             context['tech_card_formset'] = TechCardStepFormSet(instance=self.object)
@@ -197,10 +197,10 @@ class EventUpdateView(LoginRequiredMixin, UpdateView):
         context = super().get_context_data(**kwargs)
         if self.request.POST:
             context['tech_card_formset'] = TechCardStepFormSet(
-                self.request.POST, instance=self.object
+                self.request.POST, instance=self.object, prefix='tech_card'
             )
         else:
-            context['tech_card_formset'] = TechCardStepFormSet(instance=self.object)
+            context['tech_card_formset'] = TechCardStepFormSet(instance=self.object, prefix='tech_card')
         return context
 
     def form_valid(self, form):
@@ -211,6 +211,15 @@ class EventUpdateView(LoginRequiredMixin, UpdateView):
             self.object = form.save()
             tech_card_formset.instance = self.object
             tech_card_formset.save()
+            if not self.object.is_tech_card_required:
+                self.object.tech_card_steps.all().delete()
+            else:
+                for i, step in enumerate(self.object.tech_card_steps.order_by('created_at', 'id'), start=1):
+                    if step.step_number != i:
+                        # обход unique_together: временно в минус
+                        TechCardStep.objects.filter(pk=step.pk).update(step_number=-i)
+                for i, step in enumerate(self.object.tech_card_steps.order_by('created_at', 'id'), start=1):
+                    TechCardStep.objects.filter(pk=step.pk).update(step_number=i)
             messages.success(self.request, 'Заявка успешно обновлена!')
             return redirect('events:event_detail', pk=self.object.pk)
 

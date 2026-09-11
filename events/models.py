@@ -493,21 +493,9 @@ class TechCard(models.Model):
 
 
 class TechCardStep(models.Model):
-    """Технологическая карта (шаги) - Блок 5"""
-    event = models.ForeignKey(
-        Event, on_delete=models.CASCADE, related_name='tech_card_steps', verbose_name="Заявка"
-    )
-    step_number = models.PositiveIntegerField(
-        verbose_name="Порядок",
-        default=1,
-        validators=[MinValueValidator(1), MaxValueValidator(50)]
-    )
-    name = models.CharField(
-        max_length=500,
-        verbose_name="Содержание шага",
-        default="",
-        blank=True
-    )
+    event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name='tech_card_steps', verbose_name="Заявка")
+    step_number = models.PositiveIntegerField(verbose_name="Порядок")  # без default
+    name = models.CharField(max_length=500, verbose_name="Содержание шага", blank=True, default="")
     planned_start = models.DateTimeField(verbose_name="Планируемая дата и время начала шага")
     planned_end = models.DateTimeField(verbose_name="Планируемая дата и время окончания шага")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -517,22 +505,18 @@ class TechCardStep(models.Model):
         verbose_name = "Шаг технологической карты"
         verbose_name_plural = "Шаги технологической карты"
         ordering = ['event', 'step_number']
-        unique_together = ['event', 'step_number']
-
-    def __str__(self):
-        if self.name:
-            return f"Шаг {self.step_number}: {self.name[:50]}"
-        return f"Шаг {self.step_number} (Заявка #{self.event.id})"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['event', 'step_number'],
+                name='unique_step_number_per_event',
+            ),
+        ]
 
     def save(self, *args, **kwargs):
-        # Проверяем, что шагов не больше 50
-        if self.pk is None:  # Новый шаг
-            count = TechCardStep.objects.filter(event=self.event).count()
-            if count >= 50:
-                raise ValueError("Нельзя добавить более 50 шагов в технологическую карту")
-            # Если порядок не задан — присваиваем следующий
-            if not self.step_number:
-                self.step_number = count + 1
+        if not self.step_number:
+            from django.db.models import Max
+            last = TechCardStep.objects.filter(event=self.event).aggregate(m=Max('step_number'))['m'] or 0
+            self.step_number = last + 1
         super().save(*args, **kwargs)
 
 

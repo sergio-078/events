@@ -253,32 +253,40 @@
                 <div id="techCardSection" {% if not form.instance.is_tech_card_required %}style="display: none;"{% endif %}>
                     <h6 class="mt-3">Технологическая карта</h6>
                     {{ tech_card_formset.management_form }}
+
                     <div id="techCardSteps">
                         {% for form in tech_card_formset %}
                             <div class="tech-card-step">
                                 <div class="step-number">Шаг {{ forloop.counter }}</div>
+                                {{ form.id }}
                                 <div class="row">
-                                    <div class="col-md-4">
-                                        {{ form.name|as_crispy_field }}
-                                    </div>
-                                    <div class="col-md-3">
-                                        {{ form.planned_start|as_crispy_field }}
-                                    </div>
-                                    <div class="col-md-3">
-                                        {{ form.planned_end|as_crispy_field }}
-                                    </div>
+                                    <div class="col-md-4">{{ form.name|as_crispy_field }}</div>
+                                    <div class="col-md-3">{{ form.planned_start|as_crispy_field }}</div>
+                                    <div class="col-md-3">{{ form.planned_end|as_crispy_field }}</div>
                                     <div class="col-md-2">
-                                        {% if tech_card_formset.can_delete %}
-                                            {{ form.DELETE|as_crispy_field }}
-                                        {% endif %}
+                                        {% if tech_card_formset.can_delete %}{{ form.DELETE|as_crispy_field }}{% endif %}
                                     </div>
                                 </div>
-                                {% for hidden in form.hidden_fields %}
-                                    {{ hidden }}
-                                {% endfor %}
                             </div>
                         {% endfor %}
                     </div>
+
+                    {# шаблон для JS — рендерится Django с __prefix__ #}
+                    <div id="empty-form-template" style="display:none">
+                        <div class="tech-card-step">
+                            <div class="step-number">Шаг</div>
+                            {{ tech_card_formset.empty_form.id }}
+                            <div class="row">
+                                <div class="col-md-4">{{ tech_card_formset.empty_form.name|as_crispy_field }}</div>
+                                <div class="col-md-3">{{ tech_card_formset.empty_form.planned_start|as_crispy_field }}</div>
+                                <div class="col-md-3">{{ tech_card_formset.empty_form.planned_end|as_crispy_field }}</div>
+                                <div class="col-md-2">
+                                    {% if tech_card_formset.can_delete %}{{ tech_card_formset.empty_form.DELETE|as_crispy_field }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <button type="button" class="btn btn-sm btn-outline-primary" id="addTechCardStep">
                         <i class="bi bi-plus-circle"></i> Добавить следующий шаг
                     </button>
@@ -404,246 +412,123 @@
 
 {% block extra_js %}
 <script>
-    // ===== 1. Расчет длительности работ =====
+(function () {
+    // ===== Расчёт длительности =====
     function calculateDuration() {
         const startInput = document.getElementById('id_planned_start');
         const endInput = document.getElementById('id_planned_end');
         const display = document.getElementById('durationDisplay');
-        
-        if (startInput && endInput && display) {
-            const start = new Date(startInput.value);
-            const end = new Date(endInput.value);
-            
-            if (start && end && !isNaN(start) && !isNaN(end) && end > start) {
-                const diffMs = end - start;
-                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-                const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-                
-                display.textContent = `${diffDays} дн. ${diffHours} ч. ${diffMinutes} мин.`;
-                display.style.color = '#198754';
-            } else {
-                display.textContent = '0 дн. 0 ч. 0 мин.';
-                display.style.color = '#dc3545';
-            }
-        }
-    }
-    
-    // ===== 2. Управление полями при is_service_disruption =====
-    function toggleServiceDisruptionFields() {
-        const checkbox = document.getElementById('id_is_service_disruption');
-        const fields = document.getElementById('serviceDisruptionFields');
-        
-        if (checkbox && fields) {
-            if (checkbox.checked) {
-                fields.classList.remove('field-disabled');
-                // Включаем поля
-                document.querySelectorAll('#serviceDisruptionFields input, #serviceDisruptionFields select').forEach(el => {
-                    el.disabled = false;
-                });
-            } else {
-                fields.classList.add('field-disabled');
-                // Выключаем поля
-                document.querySelectorAll('#serviceDisruptionFields input, #serviceDisruptionFields select').forEach(el => {
-                    el.disabled = true;
-                });
-            }
-        }
-    }
-    
-    // ===== 3. Управление полями при is_object_outside =====
-    function toggleObjectOutsideFields() {
-        const checkbox = document.getElementById('id_is_object_outside');
-        const outsideFields = document.getElementById('objectOutsideFields');
-        const locationField = document.querySelector('#id_object_location').closest('.form-group');
-        
-        if (checkbox && outsideFields && locationField) {
-            if (checkbox.checked) {
-                outsideFields.style.display = 'block';
-                locationField.classList.add('field-disabled');
-                document.querySelector('#id_object_location').disabled = true;
-                document.querySelector('#id_object_outside_location').disabled = false;
-            } else {
-                outsideFields.style.display = 'none';
-                locationField.classList.remove('field-disabled');
-                document.querySelector('#id_object_location').disabled = false;
-                document.querySelector('#id_object_outside_location').disabled = true;
-            }
-        }
-    }
-    
-    // ===== 4. Управление полями при is_work_outside =====
-    function toggleWorkOutsideFields() {
-        const checkbox = document.getElementById('id_is_work_outside');
-        const outsideFields = document.getElementById('workOutsideFields');
-        const locationField = document.querySelector('#id_work_location').closest('.form-group');
-        
-        if (checkbox && outsideFields && locationField) {
-            if (checkbox.checked) {
-                outsideFields.style.display = 'block';
-                locationField.classList.add('field-disabled');
-                document.querySelector('#id_work_location').disabled = true;
-                document.querySelector('#id_work_outside_location').disabled = false;
-            } else {
-                outsideFields.style.display = 'none';
-                locationField.classList.remove('field-disabled');
-                document.querySelector('#id_work_location').disabled = false;
-                document.querySelector('#id_work_outside_location').disabled = true;
-            }
-        }
-    }
+        if (!startInput || !endInput || !display) return;
 
-        // ===== 4.1. Управление технологической картой =====
-    function toggleTechCardFields() {
-        const checkbox = document.getElementById('id_is_tech_card_required');
-        const section = document.getElementById('techCardSection');
-        if (!checkbox || !section) return;
-
-        if (checkbox.checked) {
-            section.style.display = 'block';
-            section.querySelectorAll('input, select, textarea').forEach(el => {
-                // Скрытые поля (management_form, csrf) не трогаем — иначе Django не соберёт formset
-                if (el.type !== 'hidden' && el.name !== 'csrfmiddlewaretoken') {
-                    el.disabled = false;
-                }
-            });
+        const start = new Date(startInput.value);
+        const end = new Date(endInput.value);
+        if (!isNaN(start) && !isNaN(end) && end > start) {
+            const diffMs = end - start;
+            const d = Math.floor(diffMs / 86400000);
+            const h = Math.floor((diffMs % 86400000) / 3600000);
+            const m = Math.floor((diffMs % 3600000) / 60000);
+            display.textContent = `${d} дн. ${h} ч. ${m} мин.`;
+            display.style.color = '#198754';
         } else {
-            section.style.display = 'none';
-            section.querySelectorAll('input, select, textarea').forEach(el => {
-                if (el.type !== 'hidden' && el.name !== 'csrfmiddlewaretoken') {
-                    el.disabled = true;
-                }
-            });
+            display.textContent = '0 дн. 0 ч. 0 мин.';
+            display.style.color = '#dc3545';
         }
     }
-    
-    // ===== 5. Управление технологической картой =====
-    function updateTechCardFormset() {
-        const forms = document.querySelectorAll('.tech-card-step');
+
+    // ===== Показ/скрытие полей перерыва сервиса =====
+    function toggleServiceDisruptionFields() {
+        const cb = document.getElementById('id_is_service_disruption');
+        const box = document.getElementById('serviceDisruptionFields');
+        if (!cb || !box) return;
+        box.style.display = cb.checked ? '' : 'none';
+    }
+
+    // ===== Показ/скрытие полей "за территорией" =====
+    function toggleObjectOutsideFields() {
+        const cb = document.getElementById('id_is_object_outside');
+        const box = document.getElementById('objectOutsideFields');
+        if (!cb || !box) return;
+        box.style.display = cb.checked ? '' : 'none';
+    }
+    function toggleWorkOutsideFields() {
+        const cb = document.getElementById('id_is_work_outside');
+        const box = document.getElementById('workOutsideFields');
+        if (!cb || !box) return;
+        box.style.display = cb.checked ? '' : 'none';
+    }
+
+    // ===== Показ/скрытие техкарты =====
+    function toggleTechCardFields() {
+        const cb = document.getElementById('id_is_tech_card_required');
+        const section = document.getElementById('techCardSection');
+        if (!cb || !section) return;
+        section.style.display = cb.checked ? '' : 'none';
+    }
+
+    // ===== Formset техкарты =====
+    function initTechCardFormset() {
+        const container = document.getElementById('techCardSteps');
         const totalForms = document.getElementById('id_tech_card-TOTAL_FORMS');
-        
-        if (totalForms) {
-            totalForms.value = forms.length;
-        }
-        
-        forms.forEach((form, index) => {
-            const stepNumber = form.querySelector('.step-number');
-            if (stepNumber) {
-                stepNumber.textContent = `Шаг ${index + 1}`;
-            }
-            
-            // Обновляем индексы в именах полей
-            const inputs = form.querySelectorAll('input, select');
-            inputs.forEach(input => {
-                const name = input.getAttribute('name');
-                if (name && name.includes('tech_card-')) {
-                    const newName = name.replace(/tech_card-\d+/, `tech_card-${index}`);
-                    input.setAttribute('name', newName);
-                    input.id = `id_${newName}`;
-                }
-            });
-        });
-    }
-    
-    // Добавление шага
-    document.addEventListener('DOMContentLoaded', function() {
         const addBtn = document.getElementById('addTechCardStep');
-        if (addBtn) {
-            addBtn.addEventListener('click', function() {
-                const container = document.getElementById('techCardSteps');
-                const forms = container.querySelectorAll('.tech-card-step');
-                
-                if (forms.length >= 50) {
-                    alert('Максимальное количество шагов - 50');
-                    return;
-                }
-                
-                // Клонируем последний шаг или создаем новый
-                let newStep;
-                if (forms.length > 0) {
-                    newStep = forms[0].cloneNode(true);
-                    // Очищаем значения полей
-                    newStep.querySelectorAll('input, select').forEach(input => {
-                        if (input.type !== 'hidden') {
-                            input.value = '';
-                        }
-                    });
-                } else {
-                    // Создаем новый шаг из шаблона
-                    const template = document.createElement('div');
-                    template.className = 'tech-card-step';
-                        template.innerHTML = `
-        <div class="step-number">Шаг 1</div>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="form-group">
-                    <label class="form-label">Содержание шага</label>
-                    <input type="text" name="tech_card-0-name" class="form-control" placeholder="Например: Проверить порт на АТС">
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-group">
-                    <label class="form-label">Планируемые дата и время начала</label>
-                    <input type="datetime-local" name="tech_card-0-planned_start" class="form-control">
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="form-group">
-                    <label class="form-label">Планируемые дата и время окончания</label>
-                    <input type="datetime-local" name="tech_card-0-planned_end" class="form-control">
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="form-group">
-                    <label class="form-label">Удалить</label>
-                    <input type="checkbox" name="tech_card-0-DELETE" class="form-check-input">
-                </div>
-            </div>
-        </div>
-    `;
-                    
-                    newStep = template;
-                }
-                
-                container.appendChild(newStep);
-                updateTechCardFormset();
+        const emptyTpl = document.getElementById('empty-form-template');
+        if (!container || !totalForms || !addBtn || !emptyTpl) return;
+
+        function renumber() {
+            container.querySelectorAll('.tech-card-step').forEach(function (row, idx) {
+                const span = row.querySelector('.step-number');
+                if (span) span.textContent = 'Шаг ' + (idx + 1);
             });
         }
-        
-        // Инициализация всех функций
+
+        addBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const idx = parseInt(totalForms.value, 10) || 0;
+            if (idx >= 50) {
+                alert('Максимальное количество шагов — 50');
+                return;
+            }
+            const html = emptyTpl.innerHTML.replace(/__prefix__/g, idx);
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = html.trim();
+            const node = wrapper.firstElementChild;
+            container.appendChild(node);
+            totalForms.value = idx + 1;
+            renumber();
+        });
+
+        container.addEventListener('change', function (e) {
+            if (e.target && e.target.name && e.target.name.endsWith('-DELETE')) {
+                const row = e.target.closest('.tech-card-step');
+                if (row) row.style.display = e.target.checked ? 'none' : '';
+            }
+        });
+
+        renumber();
+    }
+
+    // ===== Инициализация =====
+    document.addEventListener('DOMContentLoaded', function () {
+        calculateDuration();
         toggleServiceDisruptionFields();
         toggleObjectOutsideFields();
         toggleWorkOutsideFields();
         toggleTechCardFields();
-        calculateDuration();
-        
-        // Привязка событий
-        const startInput = document.getElementById('id_planned_start');
-        const endInput = document.getElementById('id_planned_end');
-        if (startInput) startInput.addEventListener('change', calculateDuration);
-        if (endInput) endInput.addEventListener('change', calculateDuration);
-        if (startInput) startInput.addEventListener('input', calculateDuration);
-        if (endInput) endInput.addEventListener('input', calculateDuration);
-        
-        const disruptionCheckbox = document.getElementById('id_is_service_disruption');
-        if (disruptionCheckbox) {
-            disruptionCheckbox.addEventListener('change', toggleServiceDisruptionFields);
-        }
-        
-        const objectOutsideCheckbox = document.getElementById('id_is_object_outside');
-        if (objectOutsideCheckbox) {
-            objectOutsideCheckbox.addEventListener('change', toggleObjectOutsideFields);
-        }
-        
-        const workOutsideCheckbox = document.getElementById('id_is_work_outside');
-        if (workOutsideCheckbox) {
-            workOutsideCheckbox.addEventListener('change', toggleWorkOutsideFields);
-        }
+        initTechCardFormset();
 
-        const techCardCheckbox = document.getElementById('id_is_tech_card_required');
-        if (techCardCheckbox) {
-            techCardCheckbox.addEventListener('change', toggleTechCardFields);
-        }
+        const s = document.getElementById('id_planned_start');
+        const e = document.getElementById('id_planned_end');
+        if (s) { s.addEventListener('change', calculateDuration); s.addEventListener('input', calculateDuration); }
+        if (e) { e.addEventListener('change', calculateDuration); e.addEventListener('input', calculateDuration); }
+
+        const sd = document.getElementById('id_is_service_disruption');
+        if (sd) sd.addEventListener('change', toggleServiceDisruptionFields);
+        const oo = document.getElementById('id_is_object_outside');
+        if (oo) oo.addEventListener('change', toggleObjectOutsideFields);
+        const wo = document.getElementById('id_is_work_outside');
+        if (wo) wo.addEventListener('change', toggleWorkOutsideFields);
+        const tc = document.getElementById('id_is_tech_card_required');
+        if (tc) tc.addEventListener('change', toggleTechCardFields);
     });
+})();
 </script>
 {% endblock %}
